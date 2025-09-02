@@ -411,12 +411,14 @@ if st.session_state.game_started:
             st.error("I have run out of questions and can't narrow it down further. You win!")
             st.session_state.game_over = True
         else:
-            # Display the question
-            current_question = st.session_state.question_list[st.session_state.question_index]
-            st.write(f"### Question {st.session_state.computer_tries + 1}:")
-            answer = st.radio(current_question["text"], ["Yes", "No"], key=f"question_{st.session_state.question_index}")
-            
-            if st.button("Submit Answer"):
+            # Wrap the radio button and submit button in a form
+            with st.form(key='computer_guess_form'):
+                current_question = st.session_state.question_list[st.session_state.question_index]
+                st.write(f"### Question {st.session_state.computer_tries + 1}:")
+                answer = st.radio(current_question["text"], ["Yes", "No"], key=f"question_{st.session_state.question_index}")
+                submit_answer_button = st.form_submit_button(label="Submit Answer")
+
+            if submit_answer_button:
                 st.session_state.computer_tries += 1
                 
                 # Filter the list of available characters based on the user's answer
