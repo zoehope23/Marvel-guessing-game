@@ -226,8 +226,7 @@ if st.session_state.game_started:
             st.write(f"### Question {st.session_state.computer_tries + 1}:")
             answer = st.radio(current_question["text"], ["Yes", "No"], key=f"question_{st.session_state.question_index}")
             
-            if answer != st.session_state.last_answer:
-                st.session_state.last_answer = answer
+            if st.button("Submit Answer"):
                 st.session_state.computer_tries += 1
                 
                 # Filter the list of available characters based on the user's answer
