@@ -18,6 +18,15 @@ if 'computer_guess' not in st.session_state:
     st.session_state.computer_guess = None
 if 'game_over' not in st.session_state:
     st.session_state.game_over = False
+if 'available_characters' not in st.session_state:
+    st.session_state.available_characters = []
+if 'question_index' not in st.session_state:
+    st.session_state.question_index = 0
+if 'question_list' not in st.session_state:
+    st.session_state.question_list = []
+if 'last_answer' not in st.session_state:
+    st.session_state.last_answer = None
+
 
 # A dictionary of Marvel characters and their attributes for the game
 # The computer will use these attributes for its hints and guesses.
@@ -78,6 +87,24 @@ marvel_characters = {
     }
 }
 
+def generate_questions():
+    """Generates a list of all possible yes/no questions based on character attributes."""
+    questions = []
+    # Collect all unique affiliations, genders, and powers
+    all_affiliations = set(char['affiliation'] for char in marvel_characters.values())
+    all_genders = set(char['gender'] for char in marvel_characters.values())
+    all_powers = set(power for char in marvel_characters.values() for power in char['powers'])
+
+    for affiliation in all_affiliations:
+        questions.append({"type": "affiliation", "value": affiliation, "text": f"Is your character part of the **{affiliation}**?"})
+    for gender in all_genders:
+        questions.append({"type": "gender", "value": gender, "text": f"Is your character **{gender}**?"})
+    for power in all_powers:
+        questions.append({"type": "powers", "value": power, "text": f"Does your character have the power of **{power}**?"})
+
+    random.shuffle(questions)
+    return questions
+
 def start_new_game():
     """Resets the game state and picks a new character."""
     st.session_state.game_started = True
@@ -87,6 +114,13 @@ def start_new_game():
     st.session_state.user_hints = []
     st.session_state.computer_guess = None
     st.session_state.secret_character = random.choice(list(marvel_characters.keys()))
+    
+    # Reset state for the computer guessing mode
+    st.session_state.available_characters = list(marvel_characters.keys())
+    st.session_state.question_index = 0
+    st.session_state.question_list = generate_questions()
+    st.session_state.last_answer = None
+    
     st.success(f"New game started! You are in **'{st.session_state.game_mode.replace('_', ' ').capitalize()}'** mode. Good luck!")
 
 def reset_game():
@@ -99,6 +133,12 @@ def reset_game():
     st.session_state.computer_guess = None
     st.session_state.secret_character = None
     st.session_state.game_mode = 'user_guesses'
+    
+    st.session_state.available_characters = []
+    st.session_state.question_index = 0
+    st.session_state.question_list = []
+    st.session_state.last_answer = None
+
     st.success("Game reset. Select a mode to start a new game.")
 
 st.title("Marvel Guessing Game")
@@ -154,83 +194,64 @@ if st.session_state.game_started:
 
     # --- Mode 2: Computer Guesses ---
     if st.session_state.game_mode == 'computer_guesses':
-        st.write("Think of a Marvel character from our list! I will try to guess it in 15 tries.")
+        st.write("Think of a Marvel character from our list! I will try to guess it with a series of yes/no questions.")
         
-        # Displaying past hints from the user
-        if st.session_state.user_hints:
-            st.write("### Your Hints:")
-            for hint_type, hint_value in st.session_state.user_hints:
-                st.write(f"- I am looking for a character with the **{hint_type}** of **'{hint_value}'**.")
-
         # Logic for computer guessing
         if st.session_state.game_over:
             st.warning("The game is over. Please click 'Start/Restart Game' to play again.")
-        elif st.session_state.computer_tries >= 15:
-            st.error("I have reached 15 guesses and could not figure it out. You win!")
+        elif not st.session_state.available_characters:
+            st.warning("I have run out of characters based on your answers! You win!")
+            st.session_state.game_over = True
+        elif len(st.session_state.available_characters) == 1:
+            st.session_state.computer_guess = st.session_state.available_characters[0]
+            st.info(f"I think your character is **{st.session_state.computer_guess}**! Am I right?")
+            
+            final_guess_feedback = st.radio(
+                "Select an option:",
+                ("Yes, you got it!", "No, you're wrong.")
+            )
+            if final_guess_feedback == "Yes, you got it!":
+                st.success("I won! Thanks for playing!")
+                st.balloons()
+                st.session_state.game_over = True
+            elif final_guess_feedback == "No, you're wrong.":
+                st.error("Darn! You win, I couldn't guess your character. Please reset the game.")
+                st.session_state.game_over = True
+        elif st.session_state.question_index >= len(st.session_state.question_list):
+            st.error("I have run out of questions and can't narrow it down further. You win!")
             st.session_state.game_over = True
         else:
-            st.write(f"The computer has used {st.session_state.computer_tries} out of 15 tries.")
-            if st.button("Computer's turn to guess!"):
-                available_characters = list(marvel_characters.keys())
-                
-                # Filter characters based on hints given
-                for hint_type, hint_value in st.session_state.user_hints:
-                    if hint_type == "powers":
-                        available_characters = [
-                            char for char in available_characters if hint_value in marvel_characters[char]["powers"]
-                        ]
-                    elif hint_type == "affiliation":
-                        available_characters = [
-                            char for char in available_characters if marvel_characters[char]["affiliation"] == hint_value
-                        ]
-                    elif hint_type == "gender":
-                        available_characters = [
-                            char for char in available_characters if marvel_characters[char]["gender"] == hint_value
-                        ]
-                
-                if not available_characters:
-                    st.warning("I'm stumped! My character list is exhausted based on your hints. You win!")
-                    st.session_state.game_over = True
-                else:
-                    st.session_state.computer_tries += 1
-                    st.session_state.computer_guess = random.choice(available_characters)
-                    st.write(f"My guess is... **{st.session_state.computer_guess}**")
+            # Display the question
+            current_question = st.session_state.question_list[st.session_state.question_index]
+            st.write(f"### Question {st.session_state.computer_tries + 1}:")
+            answer = st.radio(current_question["text"], ["Yes", "No"], key=f"question_{st.session_state.question_index}")
             
-            if st.session_state.computer_guess:
-                st.markdown("### Was my guess correct?")
-                guess_feedback = st.radio(
-                    "Select an option:",
-                    ("My guess was correct!", "My guess was incorrect, here's a hint.")
-                )
-
-                if guess_feedback == "My guess was correct!":
-                    st.success(f"I got it! I guessed your character **{st.session_state.computer_guess}** in {st.session_state.computer_tries} tries! I win!")
-                    st.balloons()
-                    st.session_state.game_over = True
+            if answer != st.session_state.last_answer:
+                st.session_state.last_answer = answer
+                st.session_state.computer_tries += 1
                 
-                elif guess_feedback == "My guess was incorrect, here's a hint.":
-                    st.markdown("### Give me a hint:")
-                    hint_type = st.selectbox(
-                        "What type of hint would you like to give?",
-                        ["powers", "affiliation", "gender"]
-                    )
-                    hint_value = st.text_input(f"Enter the value for the **{hint_type}** hint (e.g., 'Flight', 'Avengers', 'Male'):")
-                    
-                    # Store all possible hints for validation
-                    valid_hints = []
-                    for char in marvel_characters.values():
-                        valid_hints.extend(char.get(hint_type, []))
+                # Filter the list of available characters based on the user's answer
+                filtered_chars = []
+                for char in st.session_state.available_characters:
+                    char_data = marvel_characters[char]
+                    match = False
+                    if current_question["type"] == "powers":
+                        if current_question["value"] in char_data["powers"]:
+                            match = True
+                    elif current_question["type"] == "affiliation":
+                        if current_question["value"] == char_data["affiliation"]:
+                            match = True
+                    elif current_question["type"] == "gender":
+                        if current_question["value"] == char_data["gender"]:
+                            match = True
 
-                    if st.button("Submit Hint"):
-                        if hint_value:
-                            if hint_value in valid_hints:
-                                st.session_state.user_hints.append((hint_type, hint_value))
-                                st.success("Hint received. I will use this for my next guess.")
-                                st.session_state.computer_guess = None # Reset guess to trigger new turn
-                            else:
-                                st.warning("That hint value doesn't seem to be in my list. Please try a different one.")
-                        else:
-                            st.warning("Please enter a hint value.")
+                    if (answer == "Yes" and match) or (answer == "No" and not match):
+                        filtered_chars.append(char)
+
+                st.session_state.available_characters = filtered_chars
+                st.session_state.question_index += 1
+                st.write(f"Okay, I've got it. There are now {len(st.session_state.available_characters)} characters left.")
+                st.rerun()
 
 
 # Display a reset button outside of the game logic
