@@ -361,9 +361,12 @@ if st.session_state.game_started:
             elif st.session_state.user_tries == 14:
                 st.info("Last hint: " + character_data["hint4"])
             
-            guess = st.text_input("Enter your guess:", help="You can ignore capitalization and hyphens.", key="user_guess_input").lower()
+            # Use st.form to make the guessing process smoother
+            with st.form(key='user_guess_form'):
+                guess = st.text_input("Enter your guess:", help="You can ignore capitalization and hyphens.").lower()
+                submit_button = st.form_submit_button(label='Submit Guess')
 
-            if st.button("Submit Guess"):
+            if submit_button:
                 st.session_state.user_tries += 1
                 if guess == st.session_state.secret_character.lower():
                     st.balloons()
@@ -374,6 +377,7 @@ if st.session_state.game_started:
                     if st.session_state.user_tries == 15:
                         st.error(f"You have reached 15 tries. You lose! The character was **{st.session_state.secret_character}**.")
                         st.session_state.game_over = True
+                    st.rerun()
                     
 
     # --- Mode 2: Computer Guesses ---
@@ -394,6 +398,8 @@ if st.session_state.game_started:
                 "Select an option:",
                 ("Yes, you got it!", "No, you're wrong.")
             )
+            st.session_state.last_answer = final_guess_feedback # Store the user's final answer
+            
             if final_guess_feedback == "Yes, you got it!":
                 st.success("I won! Thanks for playing!")
                 st.balloons()
