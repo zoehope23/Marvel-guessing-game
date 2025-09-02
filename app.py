@@ -141,6 +141,10 @@ def reset_game():
 
     st.success("Game reset. Select a mode to start a new game.")
 
+# Start a new game automatically on first load
+if not st.session_state.game_started:
+    start_new_game()
+
 st.title("Marvel Guessing Game")
 st.write("Guess the Marvel character! You can choose to guess yourself or let the computer guess.")
 
