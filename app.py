@@ -20,7 +20,7 @@ if 'game_over' not in st.session_state:
     st.session_state.game_over = False
 if 'available_characters' not in st.session_state:
     st.session_state.available_characters = []
-if 'question_index' not in st.session_state:
+if 'question_index' in st.session_state:
     st.session_state.question_index = 0
 if 'question_list' not in st.session_state:
     st.session_state.question_list = []
@@ -84,6 +84,186 @@ marvel_characters = {
         "hint2": "He becomes a giant green rage monster when angry.",
         "hint3": "He's the strongest one there is.",
         "hint4": "His name is Bruce Banner."
+    },
+    "Black Panther": {
+        "powers": ["Superhuman strength", "Genius-level intellect", "Advanced vibranium suit", "Kinetic energy absorption"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is the king of a technologically advanced African nation.",
+        "hint2": "His suit is made from a nearly indestructible metal.",
+        "hint3": "He is a protector of his people.",
+        "hint4": "His name is T'Challa."
+    },
+    "Doctor Strange": {
+        "powers": ["Magic", "Spellcasting", "Teleportation", "Eye of Agamotto"],
+        "affiliation": "Solo hero",
+        "gender": "Male",
+        "hint1": "He was once a brilliant but arrogant neurosurgeon.",
+        "hint2": "He became a powerful sorcerer after a life-altering accident.",
+        "hint3": "He protects Earth from magical threats.",
+        "hint4": "His name is Stephen Strange."
+    },
+    "Deadpool": {
+        "powers": ["Accelerated healing", "Superhuman agility", "Expert swordsman", "Witty humor"],
+        "affiliation": "Solo hero",
+        "gender": "Male",
+        "hint1": "He is known for his unique sense of humor and breaking the fourth wall.",
+        "hint2": "He has a powerful healing factor that can regenerate him from almost any injury.",
+        "hint3": "He is a mercenary who often uses two katanas.",
+        "hint4": "His name is Wade Wilson."
+    },
+    "Loki": {
+        "powers": ["Magic", "Shapeshifting", "Illusions", "Telekinesis"],
+        "affiliation": "Villain",
+        "gender": "Male",
+        "hint1": "He is the adopted brother of another major hero.",
+        "hint2": "He is known as the God of Mischief.",
+        "hint3": "He often causes chaos and mayhem with his magical tricks.",
+        "hint4": "He is from the realm of Asgard."
+    },
+    "Scarlet Witch": {
+        "powers": ["Chaos magic", "Telekinesis", "Reality-warping", "Energy manipulation"],
+        "affiliation": "Avengers",
+        "gender": "Female",
+        "hint1": "She has incredibly powerful magic abilities.",
+        "hint2": "She's a twin, and her brother had super speed.",
+        "hint3": "Her powers were enhanced by an Infinity Stone.",
+        "hint4": "Her abilities are often unpredictable and tied to her emotions."
+    },
+    "Vision": {
+        "powers": ["Superhuman strength", "Flight", "Intangibility", "Energy beam"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is a synthezoid, a being of artificial flesh and machinery.",
+        "hint2": "His body was created using a powerful artifact.",
+        "hint3": "He can pass through solid objects.",
+        "hint4": "A yellow stone is embedded in his forehead."
+    },
+    "Groot": {
+        "powers": ["Regeneration", "Superhuman strength", "Wood manipulation", "Growth"],
+        "affiliation": "Guardians of the Galaxy",
+        "gender": "Male",
+        "hint1": "He's a sentient, tree-like creature from an alien planet.",
+        "hint2": "He can regenerate from a tiny piece of himself.",
+        "hint3": "He has a very limited vocabulary, often saying only one phrase.",
+        "hint4": "His friend is a raccoon."
+    },
+    "Ant-Man": {
+        "powers": ["Size-changing", "Superhuman strength", "Communication with ants"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is a former thief who can shrink down to a tiny size.",
+        "hint2": "His suit allows him to control a special kind of insect.",
+        "hint3": "He uses Pym Particles to change his size.",
+        "hint4": "He once fought Falcon at the Avengers Compound."
+    },
+    "Captain Marvel": {
+        "powers": ["Flight", "Superhuman strength", "Energy projection", "Cosmic power"],
+        "affiliation": "Avengers",
+        "gender": "Female",
+        "hint1": "She is an Air Force pilot who gained cosmic powers after an accident.",
+        "hint2": "She is one of the most powerful heroes in the universe.",
+        "hint3": "Her cat is a Flerken.",
+        "hint4": "Her powers are tied to the Tesseract."
+    },
+    "War Machine": {
+        "powers": ["Powered armor", "Flight", "Advanced weaponry", "Tactical combat"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is a military officer and an expert pilot.",
+        "hint2": "He is a close friend of Iron Man.",
+        "hint3": "His suit is equipped with a wide variety of armaments.",
+        "hint4": "His name is James Rhodes."
+    },
+    "Gamora": {
+        "powers": ["Superhuman strength", "Expert combatant", "Accelerated healing"],
+        "affiliation": "Guardians of the Galaxy",
+        "gender": "Female",
+        "hint1": "She is the adopted daughter of a powerful titan.",
+        "hint2": "She is known as the 'most dangerous woman in the galaxy'.",
+        "hint3": "Her main weapon is a sword called Godslayer.",
+        "hint4": "She is a member of the Guardians of the Galaxy."
+    },
+    "Star-Lord": {
+        "powers": ["Expert pilot", "Master tactician", "Element gun"],
+        "affiliation": "Guardians of the Galaxy",
+        "gender": "Male",
+        "hint1": "He is the leader of an unlikely group of heroes.",
+        "hint2": "He was abducted from Earth as a child.",
+        "hint3": "He loves to listen to music from the 70s and 80s.",
+        "hint4": "His alias comes from a powerful celestial being."
+    },
+    "Rocket": {
+        "powers": ["Genius-level intellect", "Expert marksman", "Cybernetic enhancements"],
+        "affiliation": "Guardians of the Galaxy",
+        "gender": "Male",
+        "hint1": "He is a genetically engineered raccoon.",
+        "hint2": "He is a master of weapons and military tactics.",
+        "hint3": "He has a best friend who is a tree.",
+        "hint4": "He loves collecting things, especially body parts."
+    },
+    "Drax": {
+        "powers": ["Superhuman strength", "Enhanced durability", "Expert combatant"],
+        "affiliation": "Guardians of the Galaxy",
+        "gender": "Male",
+        "hint1": "He is a warrior who takes everything literally.",
+        "hint2": "He is an expert with knives and hand-to-hand combat.",
+        "hint3": "He has a deep desire to avenge his family.",
+        "hint4": "He is known for his large, muscular physique and tattoos."
+    },
+    "Falcon": {
+        "powers": ["Advanced flight suit", "Expert pilot", "Close-quarters combat"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is a close friend of Captain America.",
+        "hint2": "He is a former pararescueman.",
+        "hint3": "He flies with a specialized winged suit.",
+        "hint4": "He is the new Captain America."
+    },
+    "Winter Soldier": {
+        "powers": ["Superhuman strength", "Cybernetic arm", "Expert assassin"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He was a brainwashed assassin and a former friend of Captain America.",
+        "hint2": "He has a powerful bionic arm.",
+        "hint3": "He was thought to be dead for many years.",
+        "hint4": "He is also known as Bucky Barnes."
+    },
+    "Wasp": {
+        "powers": ["Size-changing", "Flight", "Energy blasters"],
+        "affiliation": "Avengers",
+        "gender": "Female",
+        "hint1": "She is a partner to Ant-Man.",
+        "hint2": "She uses a shrinking suit to change her size and fly.",
+        "hint3": "Her father is a genius scientist who invented the Pym Particles.",
+        "hint4": "Her name is Hope van Dyne."
+    },
+    "Nick Fury": {
+        "powers": ["Master spy", "Expert tactician", "Skilled combatant"],
+        "affiliation": "S.H.I.E.L.D.",
+        "gender": "Male",
+        "hint1": "He is the former director of a global peacekeeping organization.",
+        "hint2": "He is known for bringing the Avengers together.",
+        "hint3": "He has a black eye patch and is very mysterious.",
+        "hint4": "He is a master spy and strategist."
+    },
+    "Hawkeye": {
+        "powers": ["Expert archer", "Master marksman", "Expert combatant"],
+        "affiliation": "Avengers",
+        "gender": "Male",
+        "hint1": "He is a master with a bow and arrow.",
+        "hint2": "He has no superpowers, but is an expert marksman.",
+        "hint3": "He is a founding member of the Avengers.",
+        "hint4": "His name is Clint Barton."
+    },
+    "Shuri": {
+        "powers": ["Genius-level intellect", "Master of technology", "Tactical combat"],
+        "affiliation": "Solo hero",
+        "gender": "Female",
+        "hint1": "She is a genius inventor from a technologically advanced nation.",
+        "hint2": "She is the princess of Wakanda.",
+        "hint3": "She designs the Black Panther's suit and weapons.",
+        "hint4": "She is the sister of King T'Challa."
     }
 }
 
@@ -256,6 +436,24 @@ if st.session_state.game_started:
                 st.write(f"Okay, I've got it. There are now {len(st.session_state.available_characters)} characters left.")
                 st.rerun()
 
+# --- Game over image display ---
+if st.session_state.game_over:
+    st.write("---")
+    st.header("Game Over!")
+    
+    # Check if the user won or lost to display the correct message and image
+    if st.session_state.game_mode == 'user_guesses' and st.session_state.user_tries < 15:
+        st.success("You won! Here is the character you guessed!")
+    elif st.session_state.game_mode == 'computer_guesses' and st.session_state.computer_guess is not None and st.session_state.last_answer == 'Yes, you got it!':
+        st.success("I won! Here is the character I guessed!")
+    else:
+        st.error("You lost! Here is the character you were trying to guess.")
+        
+    # Create the URL for the placeholder image using the character's name
+    character_name_for_url = st.session_state.secret_character.replace(" ", "%20")
+    image_url = f"https://placehold.co/600x400?text={character_name_for_url}"
+    
+    st.image(image_url, caption=f"The secret character was: {st.session_state.secret_character}", width=400)
 
 # Display a reset button outside of the game logic
 if st.session_state.game_started and not st.session_state.game_over:
