@@ -307,6 +307,3 @@ if st.session_state.game_started:
                     get_ai_question_from_gemini(st.session_state.conversation_history)
                     st.rerun()
 
-You can learn more about how to set up your environment for the Gemini API by watching this video.
-
-[How to set up the Gemini API in Python](https://www.youtube.com/watch?v=R9K15lHjFgo)
