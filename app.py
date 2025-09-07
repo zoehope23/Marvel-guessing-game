@@ -1,472 +1,312 @@
 import streamlit as st
+import google.generativeai as genai
 import random
+import time
 
-# Use st.session_state to persist data across reruns
-if 'game_started' not in st.session_state:
-    st.session_state.game_started = False
-if 'game_mode' not in st.session_state:
-    st.session_state.game_mode = 'user_guesses'
-if 'secret_character' not in st.session_state:
-    st.session_state.secret_character = None
-if 'user_tries' not in st.session_state:
-    st.session_state.user_tries = 0
-if 'computer_tries' not in st.session_state:
-    st.session_state.computer_tries = 0
-if 'user_hints' not in st.session_state:
-    st.session_state.user_hints = []
-if 'computer_guess' not in st.session_state:
-    st.session_state.computer_guess = None
-if 'game_over' not in st.session_state:
-    st.session_state.game_over = False
-if 'available_characters' not in st.session_state:
-    st.session_state.available_characters = []
-if 'question_index' in st.session_state:
-    st.session_state.question_index = 0
-if 'question_list' not in st.session_state:
-    st.session_state.question_list = []
-if 'last_answer' not in st.session_state:
-    st.session_state.last_answer = None
-
-
-# A dictionary of Marvel characters and their attributes for the game
-# The computer will use these attributes for its hints and guesses.
-marvel_characters = {
-    "Iron Man": {
-        "powers": ["Genius-level intellect", "Powered armor", "Flight", "Energy projection"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "This character is a brilliant inventor and billionaire.",
-        "hint2": "His alias comes from the suit of armor he built.",
-        "hint3": "He is a founding member of the Avengers.",
-        "hint4": "His name is Tony Stark."
-    },
-    "Captain America": {
-        "powers": ["Super-soldier serum", "Peak human strength", "Indestructible shield"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a super-soldier from World War II.",
-        "hint2": "He wields an indestructible shield made of vibranium.",
-        "hint3": "He is a symbol of justice and freedom.",
-        "hint4": "His name is Steve Rogers."
-    },
-    "Spider-Man": {
-        "powers": ["Superhuman strength", "Web-shooting", "Wall-crawling", "Spider-Sense"],
-        "affiliation": "Solo hero",
-        "gender": "Male",
-        "hint1": "He was bitten by a radioactive spider.",
-        "hint2": "He has the proportional strength of a spider and can shoot webs.",
-        "hint3": "He lives in New York City and is often a target for the Daily Bugle.",
-        "hint4": "His name is Peter Parker."
-    },
-    "Thor": {
-        "powers": ["God of Thunder", "Superhuman strength", "Control over lightning", "Mjolnir"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a god from a mythological realm.",
-        "hint2": "He wields a powerful enchanted hammer.",
-        "hint3": "He is the God of Thunder.",
-        "hint4": "His name is Thor Odinson."
-    },
-    "Black Widow": {
-        "powers": ["Master spy", "Expert martial artist", "Peak human physical condition"],
-        "affiliation": "Avengers",
-        "gender": "Female",
-        "hint1": "She is a highly trained spy and assassin.",
-        "hint2": "Her main weapons are her martial arts skills and 'Widow's Bite' gauntlets.",
-        "hint3": "She's a founding member of the Avengers, but has no superhuman powers.",
-        "hint4": "Her name is Natasha Romanoff."
-    },
-    "Hulk": {
-        "powers": ["Incredible strength", "Healing factor", "Invulnerability"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a scientist who was exposed to gamma radiation.",
-        "hint2": "He becomes a giant green rage monster when angry.",
-        "hint3": "He's the strongest one there is.",
-        "hint4": "His name is Bruce Banner."
-    },
-    "Black Panther": {
-        "powers": ["Superhuman strength", "Genius-level intellect", "Advanced vibranium suit", "Kinetic energy absorption"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is the king of a technologically advanced African nation.",
-        "hint2": "His suit is made from a nearly indestructible metal.",
-        "hint3": "He is a protector of his people.",
-        "hint4": "His name is T'Challa."
-    },
-    "Doctor Strange": {
-        "powers": ["Magic", "Spellcasting", "Teleportation", "Eye of Agamotto"],
-        "affiliation": "Solo hero",
-        "gender": "Male",
-        "hint1": "He was once a brilliant but arrogant neurosurgeon.",
-        "hint2": "He became a powerful sorcerer after a life-altering accident.",
-        "hint3": "He protects Earth from magical threats.",
-        "hint4": "His name is Stephen Strange."
-    },
-    "Deadpool": {
-        "powers": ["Accelerated healing", "Superhuman agility", "Expert swordsman", "Witty humor"],
-        "affiliation": "Solo hero",
-        "gender": "Male",
-        "hint1": "He is known for his unique sense of humor and breaking the fourth wall.",
-        "hint2": "He has a powerful healing factor that can regenerate him from almost any injury.",
-        "hint3": "He is a mercenary who often uses two katanas.",
-        "hint4": "His name is Wade Wilson."
-    },
-    "Loki": {
-        "powers": ["Magic", "Shapeshifting", "Illusions", "Telekinesis"],
-        "affiliation": "Villain",
-        "gender": "Male",
-        "hint1": "He is the adopted brother of another major hero.",
-        "hint2": "He is known as the God of Mischief.",
-        "hint3": "He often causes chaos and mayhem with his magical tricks.",
-        "hint4": "He is from the realm of Asgard."
-    },
-    "Scarlet Witch": {
-        "powers": ["Chaos magic", "Telekinesis", "Reality-warping", "Energy manipulation"],
-        "affiliation": "Avengers",
-        "gender": "Female",
-        "hint1": "She has incredibly powerful magic abilities.",
-        "hint2": "She's a twin, and her brother had super speed.",
-        "hint3": "Her powers were enhanced by an Infinity Stone.",
-        "hint4": "Her abilities are often unpredictable and tied to her emotions."
-    },
-    "Vision": {
-        "powers": ["Superhuman strength", "Flight", "Intangibility", "Energy beam"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a synthezoid, a being of artificial flesh and machinery.",
-        "hint2": "His body was created using a powerful artifact.",
-        "hint3": "He can pass through solid objects.",
-        "hint4": "A yellow stone is embedded in his forehead."
-    },
-    "Groot": {
-        "powers": ["Regeneration", "Superhuman strength", "Wood manipulation", "Growth"],
-        "affiliation": "Guardians of the Galaxy",
-        "gender": "Male",
-        "hint1": "He's a sentient, tree-like creature from an alien planet.",
-        "hint2": "He can regenerate from a tiny piece of himself.",
-        "hint3": "He has a very limited vocabulary, often saying only one phrase.",
-        "hint4": "His friend is a raccoon."
-    },
-    "Ant-Man": {
-        "powers": ["Size-changing", "Superhuman strength", "Communication with ants"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a former thief who can shrink down to a tiny size.",
-        "hint2": "His suit allows him to control a special kind of insect.",
-        "hint3": "He uses Pym Particles to change his size.",
-        "hint4": "He once fought Falcon at the Avengers Compound."
-    },
-    "Captain Marvel": {
-        "powers": ["Flight", "Superhuman strength", "Energy projection", "Cosmic power"],
-        "affiliation": "Avengers",
-        "gender": "Female",
-        "hint1": "She is an Air Force pilot who gained cosmic powers after an accident.",
-        "hint2": "She is one of the most powerful heroes in the universe.",
-        "hint3": "Her cat is a Flerken.",
-        "hint4": "Her powers are tied to the Tesseract."
-    },
-    "War Machine": {
-        "powers": ["Powered armor", "Flight", "Advanced weaponry", "Tactical combat"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a military officer and an expert pilot.",
-        "hint2": "He is a close friend of Iron Man.",
-        "hint3": "His suit is equipped with a wide variety of armaments.",
-        "hint4": "His name is James Rhodes."
-    },
-    "Gamora": {
-        "powers": ["Superhuman strength", "Expert combatant", "Accelerated healing"],
-        "affiliation": "Guardians of the Galaxy",
-        "gender": "Female",
-        "hint1": "She is the adopted daughter of a powerful titan.",
-        "hint2": "She is known as the 'most dangerous woman in the galaxy'.",
-        "hint3": "Her main weapon is a sword called Godslayer.",
-        "hint4": "She is a member of the Guardians of the Galaxy."
-    },
-    "Star-Lord": {
-        "powers": ["Expert pilot", "Master tactician", "Element gun"],
-        "affiliation": "Guardians of the Galaxy",
-        "gender": "Male",
-        "hint1": "He is the leader of an unlikely group of heroes.",
-        "hint2": "He was abducted from Earth as a child.",
-        "hint3": "He loves to listen to music from the 70s and 80s.",
-        "hint4": "His alias comes from a powerful celestial being."
-    },
-    "Rocket": {
-        "powers": ["Genius-level intellect", "Expert marksman", "Cybernetic enhancements"],
-        "affiliation": "Guardians of the Galaxy",
-        "gender": "Male",
-        "hint1": "He is a genetically engineered raccoon.",
-        "hint2": "He is a master of weapons and military tactics.",
-        "hint3": "He has a best friend who is a tree.",
-        "hint4": "He loves collecting things, especially body parts."
-    },
-    "Drax": {
-        "powers": ["Superhuman strength", "Enhanced durability", "Expert combatant"],
-        "affiliation": "Guardians of the Galaxy",
-        "gender": "Male",
-        "hint1": "He is a warrior who takes everything literally.",
-        "hint2": "He is an expert with knives and hand-to-hand combat.",
-        "hint3": "He has a deep desire to avenge his family.",
-        "hint4": "He is known for his large, muscular physique and tattoos."
-    },
-    "Falcon": {
-        "powers": ["Advanced flight suit", "Expert pilot", "Close-quarters combat"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a close friend of Captain America.",
-        "hint2": "He is a former pararescueman.",
-        "hint3": "He flies with a specialized winged suit.",
-        "hint4": "He is the new Captain America."
-    },
-    "Winter Soldier": {
-        "powers": ["Superhuman strength", "Cybernetic arm", "Expert assassin"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He was a brainwashed assassin and a former friend of Captain America.",
-        "hint2": "He has a powerful bionic arm.",
-        "hint3": "He was thought to be dead for many years.",
-        "hint4": "He is also known as Bucky Barnes."
-    },
-    "Wasp": {
-        "powers": ["Size-changing", "Flight", "Energy blasters"],
-        "affiliation": "Avengers",
-        "gender": "Female",
-        "hint1": "She is a partner to Ant-Man.",
-        "hint2": "She uses a shrinking suit to change her size and fly.",
-        "hint3": "Her father is a genius scientist who invented the Pym Particles.",
-        "hint4": "Her name is Hope van Dyne."
-    },
-    "Nick Fury": {
-        "powers": ["Master spy", "Expert tactician", "Skilled combatant"],
-        "affiliation": "S.H.I.E.L.D.",
-        "gender": "Male",
-        "hint1": "He is the former director of a global peacekeeping organization.",
-        "hint2": "He is known for bringing the Avengers together.",
-        "hint3": "He has a black eye patch and is very mysterious.",
-        "hint4": "He is a master spy and strategist."
-    },
-    "Hawkeye": {
-        "powers": ["Expert archer", "Master marksman", "Expert combatant"],
-        "affiliation": "Avengers",
-        "gender": "Male",
-        "hint1": "He is a master with a bow and arrow.",
-        "hint2": "He has no superpowers, but is an expert marksman.",
-        "hint3": "He is a founding member of the Avengers.",
-        "hint4": "His name is Clint Barton."
-    },
-    "Shuri": {
-        "powers": ["Genius-level intellect", "Master of technology", "Tactical combat"],
-        "affiliation": "Solo hero",
-        "gender": "Female",
-        "hint1": "She is a genius inventor from a technologically advanced nation.",
-        "hint2": "She is the princess of Wakanda.",
-        "hint3": "She designs the Black Panther's suit and weapons.",
-        "hint4": "She is the sister of King T'Challa."
-    }
+# --- Character Database ---
+# For a real application, this would be a separate file or database.
+# This list is a small sample for demonstration.
+MARVEL_CHARACTERS = {
+    "Easy": [
+        {"name": "Spider-Man", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Iron Man", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": True, "human": True, "from_earth": True}},
+        {"name": "Hulk", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Captain America", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": True, "human": True, "from_earth": True}},
+        {"name": "Black Widow", "attributes": {"hero/villain": "hero", "gender": "female", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Thor", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": False, "from_earth": False}},
+        {"name": "Loki", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": False, "human": False, "from_earth": False}},
+        {"name": "Thanos", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": True, "human": False, "from_earth": False}},
+    ],
+    "Medium": [
+        {"name": "Doctor Strange", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Black Panther", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": True, "human": True, "from_earth": True}},
+        {"name": "Scarlet Witch", "attributes": {"hero/villain": "hero", "gender": "female", "team_leader": False, "human": False, "from_earth": True}},
+        {"name": "Ultron", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": True, "human": False, "from_earth": True}},
+        {"name": "Magneto", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": True, "human": False, "from_earth": True}},
+        {"name": "Daredevil", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Captain Marvel", "attributes": {"hero/villain": "hero", "gender": "female", "team_leader": True, "human": True, "from_earth": True}},
+        {"name": "Winter Soldier", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Vision", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": False, "from_earth": True}},
+        {"name": "Red Skull", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": True, "human": True, "from_earth": True}},
+    ],
+    "Hard": [
+        {"name": "Blade", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": False, "from_earth": True}},
+        {"name": "Carnage", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": False, "human": False, "from_earth": True}},
+        {"name": "Ghost Rider", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Gamora", "attributes": {"hero/villain": "hero", "gender": "female", "team_leader": False, "human": False, "from_earth": False}},
+        {"name": "Adam Warlock", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": True, "human": False, "from_earth": False}},
+        {"name": "Kang the Conqueror", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": True, "human": True, "from_earth": False}},
+        {"name": "Galactus", "attributes": {"hero/villain": "villain", "gender": "male", "team_leader": False, "human": False, "from_earth": False}},
+        {"name": "Shuri", "attributes": {"hero/villain": "hero", "gender": "female", "team_leader": False, "human": True, "from_earth": True}},
+        {"name": "Star-Lord", "attributes": {"hero/villain": "hero", "gender": "male", "team_leader": True, "human": True, "from_earth": False}},
+        {"name": "Nebula", "attributes": {"hero/villain": "villain", "gender": "female", "team_leader": False, "human": False, "from_earth": False}},
+    ]
 }
 
-def generate_questions():
-    """Generates a list of all possible yes/no questions based on character attributes."""
-    questions = []
-    # Collect all unique affiliations, genders, and powers
-    all_affiliations = set(char['affiliation'] for char in marvel_characters.values())
-    all_genders = set(char['gender'] for char in marvel_characters.values())
-    all_powers = set(power for char in marvel_characters.values() for power in char['powers'])
+# --- Initialize Session State ---
+def initialize_game():
+    st.session_state.gemini_api_key = None
+    st.session_state.game_mode = None
+    st.session_state.difficulty = None
+    st.session_state.game_started = False
+    st.session_state.conversation_history = []
+    st.session_state.guess_count = 0
+    st.session_state.clue_count = 0
+    st.session_state.current_characters = []
+    st.session_state.secret_character = None
+    st.session_state.game_over = False
+    st.session_state.win = False
 
-    for affiliation in all_affiliations:
-        questions.append({"type": "affiliation", "value": affiliation, "text": f"Is your character part of the **{affiliation}**?"})
-    for gender in all_genders:
-        questions.append({"type": "gender", "value": gender, "text": f"Is your character **{gender}**?"})
-    for power in all_powers:
-        questions.append({"type": "powers", "value": power, "text": f"Does your character have the power of **{power}**?"})
+if "game_started" not in st.session_state:
+    initialize_game()
 
-    random.shuffle(questions)
-    return questions
+# --- Gemini API Functions ---
+def get_gemini_response(prompt):
+    if not st.session_state.gemini_api_key:
+        st.error("Please enter your Gemini API Key to play.")
+        return None
+    
+    genai.configure(api_key=st.session_state.gemini_api_key)
+    model = genai.GenerativeModel('gemini-1.5-pro')
+    
+    try:
+        response = model.generate_content(prompt)
+        return response.text
+    except Exception as e:
+        st.error(f"Error calling Gemini API: {e}")
+        return None
 
-def start_new_game():
-    """Resets the game state and picks a new character."""
+@st.cache_data
+def get_ai_question_from_gemini(conversation_history):
+    prompt = "You are playing a '20 Questions' game to guess a Marvel character. Your opponent is thinking of a character from the list: "
+    character_names = [char['name'] for char in st.session_state.current_characters]
+    prompt += f"{', '.join(character_names)}. Based on our conversation so far, ask a single, clear, yes/no question about the character. The question should not ask for the character's name. Example: 'Is the character a hero?' or 'Is the character male?' or 'Is the character from Earth?'. Do not provide any other text, just the question."
+    
+    # Append conversation history to the prompt
+    for role, text in conversation_history:
+        prompt += f"\n{role}: {text}"
+        
+    question = get_gemini_response(prompt)
+    st.session_state.conversation_history.append(("AI", question))
+    return question
+
+def get_ai_guess_from_gemini(conversation_history):
+    prompt = "Based on our conversation, what is your best guess for the Marvel character? The character must be from the following list: "
+    character_names = [char['name'] for char in st.session_state.current_characters]
+    prompt += f"{', '.join(character_names)}. Respond with ONLY the character's name, nothing else."
+    
+    for role, text in conversation_history:
+        prompt += f"\n{role}: {text}"
+    
+    guess = get_gemini_response(prompt)
+    return guess
+
+# --- Game Logic Functions ---
+def start_game():
     st.session_state.game_started = True
     st.session_state.game_over = False
-    st.session_state.user_tries = 0
-    st.session_state.computer_tries = 0
-    st.session_state.user_hints = []
-    st.session_state.computer_guess = None
-    st.session_state.secret_character = random.choice(list(marvel_characters.keys()))
+    st.session_state.win = False
+    st.session_state.guess_count = 0
+    st.session_state.clue_count = 0
     
-    # Reset state for the computer guessing mode
-    st.session_state.available_characters = list(marvel_characters.keys())
-    st.session_state.question_index = 0
-    st.session_state.question_list = generate_questions()
-    st.session_state.last_answer = None
+    # Set max guesses based on difficulty
+    if st.session_state.game_mode == "Human guesses":
+        st.session_state.max_guesses = 10
+    else: # AI guesses
+        st.session_state.max_guesses = 20
+
+    st.session_state.current_characters = MARVEL_CHARACTERS[st.session_state.difficulty]
     
-    st.success(f"New game started! You are in **'{st.session_state.game_mode.replace('_', ' ').capitalize()}'** mode. Good luck!")
-
-def reset_game():
-    """Resets the entire app state."""
-    st.session_state.game_started = False
-    st.session_state.game_over = False
-    st.session_state.user_tries = 0
-    st.session_state.computer_tries = 0
-    st.session_state.user_hints = []
-    st.session_state.computer_guess = None
-    st.session_state.secret_character = None
-    st.session_state.game_mode = 'user_guesses'
+    if st.session_state.game_mode == "Human guesses":
+        st.session_state.secret_character = random.choice(st.session_state.current_characters)
+        st.session_state.conversation_history = [("AI", "I'm thinking of a Marvel character. Ask me yes/no questions to guess who it is!")]
+    else: # AI guesses
+        st.session_state.secret_character = None
+        st.session_state.conversation_history = [("Human", "I am thinking of a Marvel character. Start asking me questions.")]
+        # The AI's first question will be generated on the first run of the AI mode logic
     
-    st.session_state.available_characters = []
-    st.session_state.question_index = 0
-    st.session_state.question_list = []
-    st.session_state.last_answer = None
+def restart_game():
+    initialize_game()
+    st.rerun()
 
-    st.success("Game reset. Select a mode to start a new game.")
+# --- Streamlit UI ---
+st.set_page_config(page_title="Marvel Guessing Game", layout="wide")
+st.title("🦸‍♂️ Marvel Character Guessing Game 🦹‍♀️")
 
-# Start a new game automatically on first load
 if not st.session_state.game_started:
-    start_new_game()
-
-st.title("Marvel Guessing Game")
-st.write("Guess the Marvel character! You can choose to guess yourself or let the computer guess.")
-
-# Sidebar for game mode selection
-st.sidebar.header("Game Mode")
-mode = st.sidebar.radio("Choose a mode:", ["You Guess", "Computer Guesses"])
-
-if st.sidebar.button("Start/Restart Game"):
-    st.session_state.game_mode = mode.replace(" ", "_").lower()
-    start_new_game()
+    # API Key Input
+    st.header("1. Enter your Gemini API Key")
+    st.info("Your API key is not stored and will only be used for this game session.")
+    st.session_state.gemini_api_key = st.text_input("Gemini API Key", type="password", help="Get your key from Google AI Studio.")
+    
+    if st.session_state.gemini_api_key:
+        st.success("API Key set!")
+    
+    st.header("2. Choose Game Options")
+    
+    st.session_state.game_mode = st.radio("Choose a game mode:", ["Human guesses", "AI guesses"], key="game_mode_select")
+    st.session_state.difficulty = st.radio("Choose a difficulty level:", ["Easy", "Medium", "Hard"], key="difficulty_select")
+    
+    if st.button("Start Game", type="primary"):
+        if st.session_state.gemini_api_key:
+            start_game()
+        else:
+            st.error("Please enter your Gemini API Key to start the game.")
 
 if st.session_state.game_started:
-    st.write(f"### Current Mode: {st.session_state.game_mode.replace('_', ' ').capitalize()}")
-
-    # --- Mode 1: User Guesses ---
-    if st.session_state.game_mode == 'user_guesses':
-        if st.session_state.game_over:
-            st.warning("The game is over. Please click 'Start/Restart Game' to play again.")
-        else:
-            st.write(f"You have used {st.session_state.user_tries} out of 15 tries.")
-            
-            # Hints after every 5 tries
-            character_data = marvel_characters[st.session_state.secret_character]
-            
-            if st.session_state.user_tries >= 15:
-                st.error(f"You have reached 15 tries. You lose! The character was **{st.session_state.secret_character}**.")
-                st.session_state.game_over = True
-            elif st.session_state.user_tries == 0:
-                st.info("Your first hint is: " + character_data["hint1"])
-            elif st.session_state.user_tries == 5:
-                st.info("Second hint: " + character_data["hint2"])
-            elif st.session_state.user_tries == 10:
-                st.info("Third hint: " + character_data["hint3"])
-            elif st.session_state.user_tries == 14:
-                st.info("Last hint: " + character_data["hint4"])
-            
-            # Use st.form to make the guessing process smoother
-            with st.form(key='user_guess_form'):
-                guess = st.text_input("Enter your guess:", help="You can ignore capitalization and hyphens.").lower()
-                submit_button = st.form_submit_button(label='Submit Guess')
-
-            if submit_button:
-                st.session_state.user_tries += 1
-                if guess == st.session_state.secret_character.lower():
-                    st.balloons()
-                    st.success(f"Correct! You guessed the character in {st.session_state.user_tries} tries. You win!")
-                    st.session_state.game_over = True
-                else:
-                    st.warning("Incorrect guess. Try again!")
-                    if st.session_state.user_tries == 15:
-                        st.error(f"You have reached 15 tries. You lose! The character was **{st.session_state.secret_character}**.")
-                        st.session_state.game_over = True
-                    st.rerun()
-                    
-
-    # --- Mode 2: Computer Guesses ---
-    if st.session_state.game_mode == 'computer_guesses':
-        st.write("Think of a Marvel character from our list! I will try to guess it with a series of yes/no questions.")
+    st.header(f"Mode: {st.session_state.game_mode} | Difficulty: {st.session_state.difficulty}")
+    
+    # Game Status
+    if st.session_state.game_mode == "Human guesses":
+        st.write(f"Guesses left: {st.session_state.max_guesses - st.session_state.guess_count}")
+        if st.session_state.guess_count >= 5:
+            st.warning("Clues are now available! They cost 2 guesses.")
+    else: # AI guesses
+        st.write(f"AI's Guesses: {st.session_state.guess_count} / {st.session_state.max_guesses}")
         
-        # Logic for computer guessing
-        if st.session_state.game_over:
-            st.warning("The game is over. Please click 'Start/Restart Game' to play again.")
-        elif not st.session_state.available_characters:
-            st.warning("I have run out of characters based on your answers! You win!")
-            st.session_state.game_over = True
-        elif len(st.session_state.available_characters) == 1:
-            st.session_state.computer_guess = st.session_state.available_characters[0]
-            st.info(f"I think your character is **{st.session_state.computer_guess}**! Am I right?")
-            
-            final_guess_feedback = st.radio(
-                "Select an option:",
-                ("Yes, you got it!", "No, you're wrong.")
-            )
-            st.session_state.last_answer = final_guess_feedback # Store the user's final answer
-            
-            if final_guess_feedback == "Yes, you got it!":
-                st.success("I won! Thanks for playing!")
-                st.balloons()
-                st.session_state.game_over = True
-            elif final_guess_feedback == "No, you're wrong.":
-                st.error("Darn! You win, I couldn't guess your character. Please reset the game.")
-                st.session_state.game_over = True
-        elif st.session_state.question_index >= len(st.session_state.question_list):
-            st.error("I have run out of questions and can't narrow it down further. You win!")
-            st.session_state.game_over = True
-        else:
-            # Wrap the radio button and submit button in a form
-            with st.form(key='computer_guess_form'):
-                current_question = st.session_state.question_list[st.session_state.question_index]
-                st.write(f"### Question {st.session_state.computer_tries + 1}:")
-                answer = st.radio(current_question["text"], ["Yes", "No"], key=f"question_{st.session_state.question_index}")
-                submit_answer_button = st.form_submit_button(label="Submit Answer")
+    st.divider()
 
-            if submit_answer_button:
-                st.session_state.computer_tries += 1
+    # Conversation History Display
+    chat_container = st.container()
+    with chat_container:
+        for role, text in st.session_state.conversation_history:
+            with st.chat_message(role):
+                st.markdown(text)
+
+    # --- Game Logic - Human Guesses ---
+    if st.session_state.game_mode == "Human guesses" and not st.session_state.game_over:
+        user_input = st.chat_input("Ask a yes/no question or make a guess (e.g., 'Is it Spider-Man?').")
+
+        if user_input:
+            st.session_state.guess_count += 1
+            st.session_state.conversation_history.append(("Human", user_input))
+            
+            # Check for a final guess
+            guess_match = False
+            for char in st.session_state.current_characters:
+                if user_input.lower().strip() == f"is it {char['name'].lower()}?" or user_input.lower().strip() == char['name'].lower():
+                    if char['name'] == st.session_state.secret_character['name']:
+                        st.session_state.win = True
+                        st.session_state.game_over = True
+                        st.session_state.conversation_history.append(("AI", f"Yes! You got it! The character was {st.session_state.secret_character['name']}!"))
+                    else:
+                        st.session_state.conversation_history.append(("AI", f"No, it's not {char['name']}. Try again!"))
+                    guess_match = True
+                    break
+            
+            # If not a final guess, get AI response
+            if not guess_match:
+                # Get a clue if requested and guesses remain
+                if "clue" in user_input.lower() and st.session_state.guess_count >= 5 and st.session_state.clue_count < 1:
+                    st.session_state.guess_count += 1
+                    st.session_state.clue_count += 1
+                    
+                    # Generate a clue using Gemini API
+                    prompt = f"Provide a single, helpful clue for the Marvel character {st.session_state.secret_character['name']} without revealing the name. The clue should be brief and direct, e.g., 'He is the god of thunder.'"
+                    clue = get_gemini_response(prompt)
+                    st.session_state.conversation_history.append(("AI", f"Clue unlocked! {clue}"))
+                else:
+                    # Get a yes/no answer using Gemini API
+                    prompt = f"The secret character is {st.session_state.secret_character['name']} with attributes {st.session_state.secret_character['attributes']}. The user's question is: '{user_input}'. Is the answer 'yes' or 'no'? Respond with only 'yes' or 'no'."
+                    answer = get_gemini_response(prompt)
+                    if answer:
+                        st.session_state.conversation_history.append(("AI", answer))
+                        
+            # Check win/loss conditions
+            if st.session_state.guess_count >= st.session_state.max_guesses and not st.session_state.win:
+                st.session_state.game_over = True
+                st.session_state.conversation_history.append(("AI", f"You've run out of guesses! The character was **{st.session_state.secret_character['name']}**. Game over!"))
                 
-                # Filter the list of available characters based on the user's answer
-                filtered_chars = []
-                for char in st.session_state.available_characters:
-                    char_data = marvel_characters[char]
-                    match = False
-                    if current_question["type"] == "powers":
-                        if current_question["value"] in char_data["powers"]:
-                            match = True
-                    elif current_question["type"] == "affiliation":
-                        if current_question["value"] == char_data["affiliation"]:
-                            match = True
-                    elif current_question["type"] == "gender":
-                        if current_question["value"] == char_data["gender"]:
-                            match = True
+        # Win/Loss message
+        if st.session_state.game_over:
+            if st.session_state.win:
+                st.success(f"🥳 You won! The character was {st.session_state.secret_character['name']}!")
+            else:
+                st.error(f"😔 Game over. The character was {st.session_state.secret_character['name']}.")
+            
+            if st.button("Play Again", on_click=restart_game, type="primary"):
+                st.experimental_rerun()
+                
+    # --- Game Logic - AI Guesses ---
+    elif st.session_state.game_mode == "AI guesses" and not st.session_state.game_over:
+        st.write("Think of a Marvel character and answer the AI's questions with 'Yes' or 'No'.")
+        
+        # Check if a character has been selected on the first turn
+        if st.session_state.guess_count == 0:
+            st.session_state.guess_count += 1
+            get_ai_question_from_gemini(st.session_state.conversation_history)
+            st.rerun() # Rerun to show the AI's first question
 
-                    if (answer == "Yes" and match) or (answer == "No" and not match):
-                        filtered_chars.append(char)
-
-                st.session_state.available_characters = filtered_chars
-                st.session_state.question_index += 1
-                st.write(f"Okay, I've got it. There are now {len(st.session_state.available_characters)} characters left.")
+        # Show AI's last question and user's buttons
+        last_question = st.session_state.conversation_history[-1][1]
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            if st.button("Yes"):
+                st.session_state.conversation_history.append(("Human", "Yes"))
+                st.session_state.guess_count += 1
+                
+                # Filter characters based on 'Yes' answer
+                with st.spinner('AI is thinking...'):
+                    prompt = f"Based on the question: '{last_question}' and the user's 'Yes' answer, which characters from the list {st.session_state.current_characters} can be ruled out? Provide a new, smaller list of only the possible characters that could still be the answer. Respond with a comma-separated list of names, nothing else."
+                    remaining_chars_str = get_gemini_response(prompt)
+                    
+                    if remaining_chars_str:
+                        remaining_names = [name.strip() for name in remaining_chars_str.split(',')]
+                        st.session_state.current_characters = [char for char in st.session_state.current_characters if char['name'] in remaining_names]
+                    
+                time.sleep(1) # Simulate thinking time
                 st.rerun()
 
-# --- Game over image display ---
-if st.session_state.game_over:
-    st.write("---")
-    st.header("Game Over!")
-    
-    # Check if the user won or lost to display the correct message and image
-    if st.session_state.game_mode == 'user_guesses' and st.session_state.user_tries < 15:
-        st.success("You won! Here is the character you guessed!")
-    elif st.session_state.game_mode == 'computer_guesses' and st.session_state.computer_guess is not None and st.session_state.last_answer == 'Yes, you got it!':
-        st.success("I won! Here is the character I guessed!")
-    else:
-        st.error("You lost! Here is the character you were trying to guess.")
-        
-    # Create the URL for the placeholder image using the character's name
-    character_name_for_url = st.session_state.secret_character.replace(" ", "%20")
-    image_url = f"https://placehold.co/600x400?text={character_name_for_url}"
-    
-    st.image(image_url, caption=f"The secret character was: {st.session_state.secret_character}", width=400)
+        with col2:
+            if st.button("No"):
+                st.session_state.conversation_history.append(("Human", "No"))
+                st.session_state.guess_count += 1
+                
+                # Filter characters based on 'No' answer
+                with st.spinner('AI is thinking...'):
+                    prompt = f"Based on the question: '{last_question}' and the user's 'No' answer, which characters from the list {st.session_state.current_characters} can be ruled out? Provide a new, smaller list of only the possible characters that could still be the answer. Respond with a comma-separated list of names, nothing else."
+                    remaining_chars_str = get_gemini_response(prompt)
+                    
+                    if remaining_chars_str:
+                        remaining_names = [name.strip() for name in remaining_chars_str.split(',')]
+                        st.session_state.current_characters = [char for char in st.session_state.current_characters if char['name'] in remaining_names]
+                        
+                time.sleep(1) # Simulate thinking time
+                st.rerun()
 
-# Display a reset button outside of the game logic
-if st.session_state.game_started and not st.session_state.game_over:
-    st.write("---")
-    st.button("Reset Game", on_click=reset_game)
+        # After user's answer, generate next AI move
+        if st.session_state.guess_count > 1: # After the first turn
+            num_remaining_chars = len(st.session_state.current_characters)
+            if num_remaining_chars == 1:
+                st.session_state.game_over = True
+                final_guess = st.session_state.current_characters[0]['name']
+                st.session_state.conversation_history.append(("AI", f"My final guess is **{final_guess}**."))
+                st.info(f"The AI has made a guess. Was it correct?")
+                
+                final_guess_col1, final_guess_col2 = st.columns(2)
+                with final_guess_col1:
+                    if st.button("Yes, it was correct!", type="primary"):
+                        st.session_state.win = True
+                        st.success("🎉 The AI guessed correctly! The character was " + final_guess + ".")
+                        st.button("Play Again", on_click=restart_game)
+                with final_guess_col2:
+                    if st.button("No, it was wrong."):
+                        st.session_state.win = False
+                        st.error("😔 The AI failed to guess the character. You win!")
+                        st.button("Play Again", on_click=restart_game)
+                
+            elif st.session_state.guess_count >= st.session_state.max_guesses:
+                st.session_state.game_over = True
+                final_guess = get_ai_guess_from_gemini(st.session_state.conversation_history)
+                st.session_state.conversation_history.append(("AI", f"I've run out of guesses! My final guess is **{final_guess}**."))
+                st.error("The AI has run out of guesses. You win!")
+                st.button("Play Again", on_click=restart_game)
+            else:
+                with st.spinner("AI is thinking of its next question..."):
+                    get_ai_question_from_gemini(st.session_state.conversation_history)
+                    st.rerun()
 
-st.write("---")
-st.write("Developed with Streamlit.")
+You can learn more about how to set up your environment for the Gemini API by watching this video.
+
+[How to set up the Gemini API in Python](https://www.youtube.com/watch?v=R9K15lHjFgo)
